@@ -14,6 +14,7 @@
   - chees.HMI - Проект для редактора Nextion Editor
   - chees.tft - Скомпилированный файл проекта для загрузки в дисплей Nextion
 - docs - Папка с вспомогательными файлами проекта
+- Schema.fzz - Проект для Fritzing с схемой платы
 - cheeseMakingBath.ino - Скетч для управляющей платы для Arduino
 
 ### Схема подключения
@@ -48,3 +49,4 @@
 - [Книга](https://eksmo.ru/book/sovremennoe-syrodelie-dlya-vsekh-ITD1092554/) по сыроделию
 - [Arduino IDE](https://www.arduino.cc/en/software) - Редактор для программирования Arduino и загрузки программ в микроконтроллер
 - [Nextion Editor](https://nextion.tech/nextion-editor/) - Редактор для проектирования экранов в сенсорном дисплее Nextion
+- [Fritzing](https://fritzing.org/download/) - Программа для создания схем сборки печатных плат и комплектующих

@@ -17,14 +17,24 @@ int tempReadDuration = 4;
 boolean tempReadEnable = true;
 
 // Порт для пищалки
-#define BEEPER 11
+#define BEEPER_PIN 11
+
+// Порт для pH-метра
+#define pHSensorPin A0
+
+#define pHTimerInterval 20
+#define printInterval 800
+#define ArrayLenth  40
+int pHArray[ArrayLenth];
+int pHArrayIndex=0;
+#define pHOffset 0.39   // Коэффициент компенсации помех, является разницей между pH эталонного раствора (7.01pH) и тем, что фактически показывает прибор
 
 OneWire oneWire(ONE_WIRE_BUS);        // Сообщаем библиотеке об устройстве, работающем по протоколу 1-Wire
 DallasTemperature sensors(&oneWire);  // Связываем функции библиотеки DallasTemperature с нашим 1-Wire устройством (DS18B20)
 
 void setup(void)
 {
-  Serial.begin(9600); // Порт на Nextion будет 9600, но какой то глюк
+  Serial.begin(9600); // Порт на Nextion будет 4800, 9600 или 19200, какой то глюк
   Serial.setTimeout(50); // Таймаут ожидания что все пришло
   sensors.begin();                // Запускаем библиотеку измерения температуры
   pinMode(term_power, OUTPUT);    // Определяем пин подключения питания датчика температуры
@@ -33,7 +43,8 @@ void setup(void)
   pinMode(LED_BUILTIN, OUTPUT);
 
   // Бипер
-  pinMode(BEEPER, OUTPUT);
+  pinMode(BEEPER_PIN, OUTPUT);
+  
 }
 
 
@@ -54,6 +65,11 @@ void loop() {
 
   int frequency;
 
+  // Переменные для измерения pH
+  static unsigned long pHTime = millis();
+  static unsigned long printTime = millis();
+  static float pHValue,voltage;
+
   if(millis() >= tempReadTimer + tempReadDuration * 1000 && tempReadEnable) {
       // Настало время считать данные с датчика и отправить их в Nextion
 
@@ -66,11 +82,28 @@ void loop() {
       Serial.write(0xFF);
       Serial.write(0xFF);
       Serial.write(0xFF);
+      // Отправляем значение кислотности в Nextion
+      Serial.print("main.pHIn.txt=\"");
+      Serial.print(String(pHValue*100));
+      Serial.print("\"");
+      Serial.write(0xFF);
+      Serial.write(0xFF);
+      Serial.write(0xFF);
       //digitalWrite(LED_BUILTIN, LOW);
 
       // Обновляем таймер
       tempReadTimer = millis();
 
+  }
+
+  if(millis()-pHTime > pHTimerInterval)
+  {
+    pHArray[pHArrayIndex++]=analogRead(pHSensorPin);
+    if(pHArrayIndex==ArrayLenth)pHArrayIndex=0;
+    voltage = avergearray(pHArray, ArrayLenth)*5.0/1024;
+    pHValue = 3.5*voltage+pHOffset;
+    pHTime=millis();
+    
   }
   
   // Получаем управляющие сигналы
@@ -84,14 +117,14 @@ void loop() {
       if(code == "beepOn") {
           // Пришла команда биперу - гудеть
           digitalWrite(LED_BUILTIN, HIGH);
-          //tone(BEEPER, 800,500);
-          tone(BEEPER, 1000,500);
+          //tone(BEEPER_PIN, 800,500);
+          tone(BEEPER_PIN, 1000,500);
           // Запрещаем мерить температуру, пока гудит биппер
           tempReadEnable = false;
       } else if(code == "beepOff") {
           // Пришла команда биперу - выключиться
           digitalWrite(LED_BUILTIN, LOW);
-          noTone(BEEPER);
+          noTone(BEEPER_PIN);
           
           // Включаем возможность мерить температуру
           tempReadEnable = true;
@@ -99,4 +132,44 @@ void loop() {
   
   }
 
+}
+
+double avergearray(int* arr, int number){
+  int i;
+  int max,min;
+  double avg;
+  long amount=0;
+  if(number<=0){
+    Serial.println("Error number for the array to avraging!/n");
+    return 0;
+  }
+  if(number<5){   //less than 5, calculated directly statistics
+    for(i=0;i<number;i++){
+      amount+=arr[i];
+    }
+    avg = amount/number;
+    return avg;
+  }else{
+    if(arr[0]<arr[1]){
+      min = arr[0];max=arr[1];
+    }
+    else{
+      min=arr[1];max=arr[0];
+    }
+    for(i=2;i<number;i++){
+      if(arr[i]<min){
+        amount+=min;        //arr<min
+        min=arr[i];
+      }else {
+        if(arr[i]>max){
+          amount+=max;    //arr>max
+          max=arr[i];
+        }else{
+          amount+=arr[i]; //min<=arr<=max
+        }
+      }//if
+    }//for
+    avg = (double)amount/(number-2);
+  }//if
+  return avg;
 }
